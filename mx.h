@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <iomanip>
 
 #include "smath.h"
 
@@ -19,6 +20,8 @@ private:
 	ItemsType epsilon;
 
 	ItemsType _det();
+	ItemsType _det2();
+	ItemsType _det3();
 	// _detn(): нахождение определителя матрицы порядка n путем сведения определителя к верхнетреугольному
 	ItemsType _detn();
 public:
@@ -113,9 +116,9 @@ ItemsType Matrix<ItemsType>::_det() {
 	if (m == 1)
 		return items[0];
 	else if (m == 2)
-		return items[0] * items[3] - items[1] * items[2];
+		return _det2();
 	else if (m == 3)
-		return items[0] * items[4] * items[8] + items[1] * items[5] * items[6] + items[2] * items[3] * items[7] - items[2] * items[4] * items[6] - items[1] * items[3] * items[8] - items[0] * items[5] * items[7];
+		return _det3();
 	else {
 		ItemsType term;
 		size_t i;
@@ -125,6 +128,16 @@ ItemsType Matrix<ItemsType>::_det() {
 		}
 	}
 	return res;
+}
+
+template <typename ItemsType>
+ItemsType Matrix<ItemsType>::_det2() {
+	return items[0] * items[3] - items[1] * items[2];
+}
+
+template <typename ItemsType>
+ItemsType Matrix<ItemsType>::_det3() {
+	return items[0] * items[4] * items[8] + items[1] * items[5] * items[6] + items[2] * items[3] * items[7] - items[2] * items[4] * items[6] - items[1] * items[3] * items[8] - items[0] * items[5] * items[7];
 }
 
 template <typename ItemsType>
@@ -138,14 +151,14 @@ ItemsType Matrix<ItemsType>::_detn() {
 		for (size_t i = j; i < m; i++) {
 			if (i == j) {
 				// Следующие условие добивается того, чтобы в матрице на позиции i, i оказалась единица
-				if (SMath::abs(mx.items[mx.ij_to_pos(i, j)] - 1) > epsilon) 
+				if (SMath::abs(mx.items[mx.ij_to_pos(i, j)] - 1) > epsilon)
 					if (SMath::abs(mx.items[mx.ij_to_pos(i, j)]) <= epsilon) {
 						std::vector<ItemsType> curColumn = mx.getColumnV(j);
 						curColumn.erase(curColumn.begin(), curColumn.begin() + i);
 						size_t iMaxItem = SMath::max(curColumn);
 						if (SMath::abs(mx.items[mx.ij_to_pos(iMaxItem + i, j)]) <= epsilon)
 							return 0;
-						
+
 						mx.swapLines(i, iMaxItem);
 						std::cout << "Swap lines: " << i << ' ' << iMaxItem << std::endl;
 						sign = !sign;
@@ -153,20 +166,17 @@ ItemsType Matrix<ItemsType>::_detn() {
 							continue;
 					}
 
-					std::cout << std::endl;
-					mx.print();
-
 					ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
 					offsetCoef *= coef;
 					for (size_t k = j; k < mx.m; k++)
 						mx.items[mx.ij_to_pos(i, k)] /= coef;
-				}
-				continue;
-			}
 			
-			ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
-			for (size_t k = j; k < mx.m; k++)
-				mx.items[mx.ij_to_pos(i, k)] -= coef * mx.items[mx.ij_to_pos(j, k)];
+					continue;
+			}
+				ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
+				for (size_t k = j; k < mx.m; k++)
+					mx.items[mx.ij_to_pos(i, k)] -= coef * mx.items[mx.ij_to_pos(j, k)];
+			}	
 		}
 
 	for (size_t i = 0; i < m; i++)
@@ -211,11 +221,20 @@ ItemsType Matrix<ItemsType>::getItem(size_t pos) const {
 
 template <typename ItemsType>
 void Matrix<ItemsType>::print() {
+	if (!isExist())
+		throw(std::exception("Matrix not defined"));
+	if (m == 1)
+		std::cout << "( ";
 	for (size_t i = 0; i < m; i++) {
+		if (m != 1)
+			std::cout << ((i == 0) ? '/' : (i == m - 1) ? '\\' : '|') << ' ';
 		for (size_t j = 0; j < n; j++)
-			std::cout << items[ij_to_pos(i, j)] << ' ';
-		std::cout << std::endl;
+			std::cout << std::setw(5) << items[ij_to_pos(i, j)] << ' ';
+		if (m != 1)
+			std::cout << static_cast<char>((i == 0) ? '\\' : (i == m - 1) ? '//' : '|')  << std::endl;
 	}
+	if (m == 1)
+		std::cout << ')';
 }
 
 template <typename ItemsType>
@@ -428,6 +447,12 @@ template <typename ItemsType>
 ItemsType Matrix<ItemsType>::determinant() {
 	if (!isExist() || !isSquare())
 		throw std::exception("Determinant not defined");
+	if (n == 1)
+		return items[0];
+	else if (n == 2)
+		return _det2();
+	else if (n == 3)
+		return _det3();
 	return _detn();
 }
 
