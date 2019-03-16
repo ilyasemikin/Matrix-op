@@ -66,7 +66,9 @@ public:
 	Matrix<ItemsType> minor(size_t _i, size_t _j);
 	Matrix<ItemsType> transposed();
 	Matrix<ItemsType> inverse();
+
 	Matrix<ItemsType> toRowEchelonForm();
+	Matrix<ItemsType> toIdentity();
 
 	ItemsType determinant();
 
@@ -155,8 +157,8 @@ ItemsType Matrix<ItemsType>::_detn() {
 					if (SMath::abs(mx.items[mx.ij_to_pos(i, j)]) <= epsilon) {
 						std::vector<ItemsType> curColumn = mx.getColumnV(j);
 						curColumn.erase(curColumn.begin(), curColumn.begin() + i);
-						size_t iMaxItem = SMath::max(curColumn);
-						if (SMath::abs(mx.items[mx.ij_to_pos(iMaxItem + i, j)]) <= epsilon)
+						size_t iMaxItem = SMath::max(curColumn) + i;
+						if (SMath::abs(mx.items[mx.ij_to_pos(iMaxItem, j)]) <= epsilon)
 							return 0;
 
 						mx.swapLines(i, iMaxItem);
@@ -415,8 +417,12 @@ Matrix<ItemsType> Matrix<ItemsType>::inverse() {
 
 template <typename ItemsType>
 Matrix<ItemsType> Matrix<ItemsType>::toRowEchelonForm() {
+	if (!isExist())
+		throw(std::exception("Matrix isn't exist"));
+	if (m > n)
+		throw;
 	if (isLowTriangular())
-		return *this;
+		return *this; 
 	Matrix<ItemsType> res = *this;
 	for (size_t j = 0; j < res.m; j++)
 		for (size_t i = 0; i < res.m; i++) {
@@ -436,9 +442,58 @@ Matrix<ItemsType> Matrix<ItemsType>::toRowEchelonForm() {
 				ItemsType coef0, coef1;
 				coef0 = res.items[ij_to_pos(j, j)];
 				coef1 = res.items[ij_to_pos(i, j)];
-				for (size_t k = j; k < n; k++)
+				for (size_t k = j; k < res.n; k++)
 					res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
 			}
+		}
+	return res;
+}
+
+template <typename ItemsType>
+Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
+	if (!isExist())
+		throw(std::exception("Matrix isn't exist"));
+	if (m > n)
+		throw;
+	Matrix<ItemsType> res = *this;
+	for (size_t j = 0; j < res.m; j++)
+		for (size_t i = j; i < res.m; i++) {
+			if (i == j) {
+				if (SMath::abs(res.items[ij_to_pos(i, j)]) <= res.epsilon) {
+					std::vector<ItemsType> curColumn = res.getColumnV(j);
+					curColumn.erase(curColumn.begin(), curColumn.begin() + i);
+					size_t iMaxItem = SMath::max(curColumn) + i;
+					res.swapLines(i, iMaxItem);
+				}
+
+				if (SMath::abs(res.items[ij_to_pos(i, j)] - 1) > res.epsilon) {
+					ItemsType coef = res.items[ij_to_pos(i, j)];
+					for (size_t k = i; k < res.n; k++)
+						res.items[ij_to_pos(i, k)] /= coef;
+				}
+				std::cout << std::endl;
+				res.print();
+				continue;
+			}
+
+
+			ItemsType coef0, coef1;
+			coef0 = res.items[ij_to_pos(j, j)];
+			coef1 = res.items[ij_to_pos(i, j)];
+			for (size_t k = j; k < res.n; k++)
+				res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
+			std::cout << std::endl;
+			res.print();
+
+		}
+
+	for (size_t j = res.m - 1; j > 0; j--)
+		for (size_t i = 0; i != j; i++) {
+			ItemsType coef = res.items[ij_to_pos(i, j)];
+			for (size_t k = j; k < res.n; k++)
+				res.items[ij_to_pos(i, k)] = res.items[ij_to_pos(i, k)] - coef * res.items[ij_to_pos(j, k)];
+			std::cout << std::endl;
+			res.print();
 		}
 	return res;
 }
