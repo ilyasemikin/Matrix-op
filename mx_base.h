@@ -23,14 +23,15 @@ private:
 	ItemsType _det();
 	ItemsType _det2();
 	ItemsType _det3();
-	// _detn(): нахождение определителя матрицы порядка n путем сведения определителя к верхнетреугольному
+	// _detn(): нахождение определителя матрицы порядка n путем сведения определителя к верхнетреугольному виду
 	ItemsType _detn();
 public:
 	Matrix() { m = n = epsilon = 0; };
 	Matrix(ItemsType *_items, size_t _lenItems, size_t _m, size_t _n);
 	Matrix(std::vector<ItemsType> _items, size_t _m, size_t _n, ItemsType _epsilon = 0);
 
-	void print();
+	void print(std::ostream &stream) const;
+	void print() const;
 
 	void setItem(ItemsType item, size_t i, size_t j);
 	inline void setEpsilon(ItemsType _epsilon) { epsilon = _epsilon; };
@@ -43,34 +44,47 @@ public:
 
 	inline bool isSquare() const { return (m == n && m != 0) ? true : false; };
 	inline bool isExist() const { return (m == 0 || n == 0 || items.empty()) ? false : true; }
-	inline bool isTriangular() const { return (isExist() && (isUpTriangular() || isLowTriangular())) ? true : false; };
+	// isUpTriangular(): проверка, является ли матрица верхнетреугольной
 	bool isUpTriangular() const;
+	// isUpTriangular(): проверка, является ли матрица нижнетреугольной
 	bool isLowTriangular() const;
+	// isZeroLine(i): проверка, состоит ли i-строка из нулей
 	bool isZeroLine(size_t i) const;
+	// isZeroColumn(j): проверка, состоит ли j-столбец из нулей
 	bool isZeroColumn(size_t j) const;
 
-	void replaceLine(size_t i, std::vector<ItemsType> line);
-	void replaceColumn(size_t j, std::vector<ItemsType> column);
+	void insertLine(size_t i, std::vector<ItemsType> line);
+	void insertColumn(size_t j, std::vector<ItemsType> column);
 
 	void addLine(size_t i, std::vector<ItemsType> line);
 	void addColumn(size_t j, std::vector<ItemsType> column);
 
+	// getLineV(i): возвращает i строку в виде vector<тип элемента массива>
 	std::vector<ItemsType> getLineV(size_t i);
+	// getColumn(j): возвращает j столбец в виде vector<тип элемента массива>
 	std::vector<ItemsType> getColumnV(size_t j);
+	// getLine(i): возвращает i строку в виде Matrixr<тип элемента массива>
 	Matrix<ItemsType> getLine(size_t i);
+	// getColumn(j): возвращает j столбец в виде Matrix<тип элемента массива>
 	Matrix<ItemsType> getColumn(size_t j);
 
 	void swapLines(size_t i1, size_t i2);
 	void swapColumns(size_t j1, size_t j2);
 
+	// minor(...): возвращает минор матрицы, не изменяет исходную матрицу
 	Matrix<ItemsType> minor(size_t pos);
 	Matrix<ItemsType> minor(size_t _i, size_t _j);
+	// transposed(): возврат транспонированной матрицы, не изменяет исходную матрицу
 	Matrix<ItemsType> transposed();
+	// inverse(): возврат обратной матрицы не изменяет исходную матрицу
 	Matrix<ItemsType> inverse();
 
+	// toRowEchelonForm(): сведение матрицы к верхне треугольному виду
 	Matrix<ItemsType> toRowEchelonForm();
+	// toIdentity(): сведение матрицы к единичной
 	Matrix<ItemsType> toIdentity();
 
+	// determinant(): нахождение определителя матрицы
 	ItemsType determinant();
 
 	Matrix<ItemsType> operator = (const Matrix<ItemsType> &mx);
@@ -98,6 +112,9 @@ public:
 
 	template <typename T>
 	friend bool operator == (const Matrix<T> &mx1, const Matrix<T> &mx2);
+
+	template <typename T>
+	friend std::ostream & operator << (std::ostream &stream, const Matrix<ItemsType> &mx);
 };
 
 template <typename ItemsType>
@@ -113,6 +130,7 @@ std::pair<size_t, size_t> Matrix<ItemsType>::pos_to_ij(size_t pos) const {
 	return std::pair<size_t, size_t>(i, j);
 }
 
+// _det(): нахождение матрицы путем разложения первой строки. На данный момент не используется. Сохранена лишь по той причине, что жалко удалять (вдруг пригодится)
 template <typename ItemsType>
 ItemsType Matrix<ItemsType>::_det() {
 	ItemsType res = 0;
@@ -146,7 +164,7 @@ ItemsType Matrix<ItemsType>::_det3() {
 template <typename ItemsType>
 ItemsType Matrix<ItemsType>::_detn() {
 	ItemsType det = 1,
-		offsetCoef = 1;			// Коэффицент, который возникает при делении строки на число, которое производится для получения в позиции i, i единицы
+		offsetCoef = 1;			// Коэффицент, который возникает при делении строки на число, которое производится для получения в позиции i, i единицы (т.е число, который выносится)
 	bool sign = false;			// Знак определителя, хранится из за того, что в процессе сведения, в условии (i == j) могут меняться строки
 	Matrix<ItemsType> mx = *this;
 
@@ -176,16 +194,16 @@ ItemsType Matrix<ItemsType>::_detn() {
 
 				continue;
 			}
+			// Сводим матрицу к верхнетреугольной
 			ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
 			for (size_t k = j; k < mx.m; k++)
 				mx.items[mx.ij_to_pos(i, k)] -= coef * mx.items[mx.ij_to_pos(j, k)];
 		}
 	}
 
+	// Находим определитель верхнетреугольной матрицы
 	for (size_t i = 0; i < m; i++)
 		det *= mx.items[ij_to_pos(i, i)];
-
-	mx.print();
 
 	return (sign ? -1 : 1) * offsetCoef * det;
 }
@@ -223,10 +241,10 @@ ItemsType Matrix<ItemsType>::getItem(size_t pos) const {
 }
 
 template <typename ItemsType>
-void Matrix<ItemsType>::print() {
+void Matrix<ItemsType>::print(std::ostream &stream) const {
 	if (!isExist())
 		throw(std::exception("Matrix not defined"));
-	size_t sizePlaceItem = 1;
+	size_t sizePlaceItem = 1;			// Место, отводимое под число в матрице
 	for (auto &x : items) {
 		std::stringstream itemStream;
 		itemStream << std::setprecision(2) << x;
@@ -235,11 +253,16 @@ void Matrix<ItemsType>::print() {
 			sizePlaceItem = itemLength;
 	}
 	for (size_t i = 0; i < m; i++) {
-		std::cout << "| ";
+		stream << "| ";
 		for (size_t j = 0; j < n; j++)
-			std::cout << std::setw(sizePlaceItem) << std::setprecision(2) << items[ij_to_pos(i, j)] << ' ';
-		std::cout << '|' << std::endl;
+			stream << std::setw(sizePlaceItem) << std::setprecision(2) << items[ij_to_pos(i, j)] << ' ';
+		stream << '|' << std::endl;
 	}
+}
+
+template <typename ItemsType>
+void Matrix<ItemsType>::print() const {
+	print(std::cout);
 }
 
 template <typename ItemsType>
@@ -284,7 +307,7 @@ bool Matrix<ItemsType>::isZeroColumn(size_t j) const {
 }
 
 template <typename ItemsType>
-void Matrix<ItemsType>::replaceLine(size_t i, std::vector<ItemsType> line) {
+void Matrix<ItemsType>::insertLine(size_t i, std::vector<ItemsType> line) {
 	if (i >= m)
 		throw std::exception("Line not defined");
 	size_t k = 0;
@@ -293,7 +316,7 @@ void Matrix<ItemsType>::replaceLine(size_t i, std::vector<ItemsType> line) {
 }
 
 template <typename ItemsType>
-void Matrix<ItemsType>::replaceColumn(size_t j, std::vector<ItemsType> column) {
+void Matrix<ItemsType>::insertColumn(size_t j, std::vector<ItemsType> column) {
 	if (j >= n)
 		throw std::exception("Column not defined");
 	size_t k = 0;
@@ -461,11 +484,13 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 	Matrix<ItemsType> res = *this;
 	for (size_t j = 0; j < res.m; j++)
 		for (size_t i = j; i < res.m; i++) {
-			if (i == j) {
+			if (i == j) {				// Приводим элементы i, i к единице
 				if (SMath::abs(res.items[ij_to_pos(i, j)]) <= res.epsilon) {
 					std::vector<ItemsType> curColumn = res.getColumnV(j);
 					curColumn.erase(curColumn.begin(), curColumn.begin() + i);
 					size_t iMaxItem = SMath::max(curColumn) + i;
+					if (SMath::abs(res.items[iMaxItem]) < res.epsilon)
+						break;
 					res.swapLines(i, iMaxItem);
 				}
 
@@ -477,7 +502,7 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 				continue;
 			}
 
-
+			// Приводим матрицу к верхне треугольному виду
 			ItemsType coef0, coef1;
 			coef0 = res.items[ij_to_pos(j, j)];
 			coef1 = res.items[ij_to_pos(i, j)];
@@ -485,6 +510,7 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 				res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
 		}
 
+	// Приводим матрицу к единичной
 	for (size_t j = res.m - 1; j > 0; j--)
 		for (size_t i = 0; i != j; i++) {
 			ItemsType coef = res.items[ij_to_pos(i, j)];
@@ -609,4 +635,10 @@ bool operator == (const Matrix<ItemsType> &mx1, const Matrix<ItemsType> &mx2) {
 		if (mx1.items[i] != mx2.items[i])
 			return false;
 	return true;
+}
+
+template<typename ItemsType>
+std::ostream & operator<<(std::ostream &stream, const Matrix<ItemsType>&mx) {
+	mx.print(stream);
+	return stream;
 }

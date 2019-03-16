@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="mx.h">
+    <ClInclude Include="smath.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="smath.h">
+    <ClInclude Include="mx_base.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

@@ -115,7 +115,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="mx.h" />
+    <ClInclude Include="mx_base.h" />
     <ClInclude Include="smath.h" />
   </ItemGroup>
   <ItemGroup>
