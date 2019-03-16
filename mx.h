@@ -4,10 +4,11 @@
 #include <vector>
 #include <utility>
 #include <iomanip>
+#include <sstream>
 
 #include "smath.h"
 
-template <typename ItemsType> 
+template <typename ItemsType>
 class Matrix {
 private:
 	std::vector<ItemsType> items;
@@ -25,7 +26,7 @@ private:
 	// _detn(): нахождение определителя матрицы порядка n путем сведения определителя к верхнетреугольному
 	ItemsType _detn();
 public:
-	Matrix() { m = n = epsilon =  0; };
+	Matrix() { m = n = epsilon = 0; };
 	Matrix(ItemsType *_items, size_t _lenItems, size_t _m, size_t _n);
 	Matrix(std::vector<ItemsType> _items, size_t _m, size_t _n, ItemsType _epsilon = 0);
 
@@ -168,18 +169,18 @@ ItemsType Matrix<ItemsType>::_detn() {
 							continue;
 					}
 
-					ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
-					offsetCoef *= coef;
-					for (size_t k = j; k < mx.m; k++)
-						mx.items[mx.ij_to_pos(i, k)] /= coef;
-			
-					continue;
-			}
 				ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
+				offsetCoef *= coef;
 				for (size_t k = j; k < mx.m; k++)
-					mx.items[mx.ij_to_pos(i, k)] -= coef * mx.items[mx.ij_to_pos(j, k)];
-			}	
+					mx.items[mx.ij_to_pos(i, k)] /= coef;
+
+				continue;
+			}
+			ItemsType coef = mx.items[mx.ij_to_pos(i, j)];
+			for (size_t k = j; k < mx.m; k++)
+				mx.items[mx.ij_to_pos(i, k)] -= coef * mx.items[mx.ij_to_pos(j, k)];
 		}
+	}
 
 	for (size_t i = 0; i < m; i++)
 		det *= mx.items[ij_to_pos(i, i)];
@@ -225,18 +226,20 @@ template <typename ItemsType>
 void Matrix<ItemsType>::print() {
 	if (!isExist())
 		throw(std::exception("Matrix not defined"));
-	if (m == 1)
-		std::cout << "( ";
-	for (size_t i = 0; i < m; i++) {
-		if (m != 1)
-			std::cout << ((i == 0) ? '/' : (i == m - 1) ? '\\' : '|') << ' ';
-		for (size_t j = 0; j < n; j++)
-			std::cout << std::setw(5) << items[ij_to_pos(i, j)] << ' ';
-		if (m != 1)
-			std::cout << static_cast<char>((i == 0) ? '\\' : (i == m - 1) ? '//' : '|')  << std::endl;
+	size_t sizePlaceItem = 1;
+	for (auto &x : items) {
+		std::stringstream itemStream;
+		itemStream << std::setprecision(2) << x;
+		size_t itemLength = itemStream.str().size();
+		if (sizePlaceItem < itemLength)
+			sizePlaceItem = itemLength;
 	}
-	if (m == 1)
-		std::cout << ')';
+	for (size_t i = 0; i < m; i++) {
+		std::cout << "| ";
+		for (size_t j = 0; j < n; j++)
+			std::cout << std::setw(sizePlaceItem) << std::setprecision(2) << items[ij_to_pos(i, j)] << ' ';
+		std::cout << '|' << std::endl;
+	}
 }
 
 template <typename ItemsType>
@@ -285,7 +288,7 @@ void Matrix<ItemsType>::replaceLine(size_t i, std::vector<ItemsType> line) {
 	if (i >= m)
 		throw std::exception("Line not defined");
 	size_t k = 0;
-	for (size_t j = 0; j < n; j++) 
+	for (size_t j = 0; j < n; j++)
 		items[ij_to_pos(i, j)] = (k < line.size()) ? line[k++] : 0;
 }
 
@@ -422,7 +425,7 @@ Matrix<ItemsType> Matrix<ItemsType>::toRowEchelonForm() {
 	if (m > n)
 		throw;
 	if (isLowTriangular())
-		return *this; 
+		return *this;
 	Matrix<ItemsType> res = *this;
 	for (size_t j = 0; j < res.m; j++)
 		for (size_t i = 0; i < res.m; i++) {
@@ -471,8 +474,6 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 					for (size_t k = i; k < res.n; k++)
 						res.items[ij_to_pos(i, k)] /= coef;
 				}
-				std::cout << std::endl;
-				res.print();
 				continue;
 			}
 
@@ -482,9 +483,6 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 			coef1 = res.items[ij_to_pos(i, j)];
 			for (size_t k = j; k < res.n; k++)
 				res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
-			std::cout << std::endl;
-			res.print();
-
 		}
 
 	for (size_t j = res.m - 1; j > 0; j--)
@@ -492,8 +490,6 @@ Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
 			ItemsType coef = res.items[ij_to_pos(i, j)];
 			for (size_t k = j; k < res.n; k++)
 				res.items[ij_to_pos(i, k)] = res.items[ij_to_pos(i, k)] - coef * res.items[ij_to_pos(j, k)];
-			std::cout << std::endl;
-			res.print();
 		}
 	return res;
 }
@@ -593,7 +589,7 @@ Matrix<ItemsType> operator * (const Matrix<ItemsType> &mx1, const Matrix<ItemsTy
 }
 
 template <typename ItemsType, typename NumType>
- Matrix<ItemsType> operator * (const Matrix<ItemsType> &mx, const NumType &num) {
+Matrix<ItemsType> operator * (const Matrix<ItemsType> &mx, const NumType &num) {
 	std::vector<ItemsType> res(mx.m * mx.n);
 	for (size_t i = 0; i < mx.m * mx.n; i++)
 		res[i] = num * mx.items[i];
