@@ -4,7 +4,7 @@
 #include "mx_base.h"
 #include "ordinary_fractions.h"
 
-int main() {
+int main(int argc, char **argv) {
 	std::vector<OrdFract> mx_items(9, 0);
 
 	OrdFract of1(-3, 1), of2(3, 1);
@@ -19,5 +19,6 @@ int main() {
 
 	char c;
 	std::cin >> c; 
+	
 	return 0;
 }

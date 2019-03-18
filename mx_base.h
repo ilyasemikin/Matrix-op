@@ -76,7 +76,9 @@ public:
 	Matrix<ItemsType> minor(size_t _i, size_t _j);
 	// transposed(): возврат транспонированной матрицы, не изменяет исходную матрицу
 	Matrix<ItemsType> transposed();
-	// inverse(): возврат обратной матрицы не изменяет исходную матрицу
+	// cross(): возврат взаимной матрицы, не изменяет исходную матрицу
+	Matrix<ItemsType> cross();
+	// inverse(): возврат обратной матрицы, не изменяет исходную матрицу
 	Matrix<ItemsType> inverse();
 
 	// toRowEchelonForm(): сведение матрицы к верхне треугольному виду
@@ -427,6 +429,15 @@ Matrix<ItemsType> Matrix<ItemsType>::transposed() {
 		for (size_t j = 0; j < n; j++)
 			transItems[ij_to_pos(i, j)] = items[ij_to_pos(j, i)];
 	return Matrix<ItemsType>(transItems, m, n);
+}
+
+template <typename ItemsType>
+Matrix<ItemsType> Matrix<ItemsType>::cross() {
+	std::vector<ItemsType> crossItems(m * n);
+	for (size_t i = 0; i < m; i++)
+		for (size_t j = 0; j < n; j++)
+			crossItems[ij_to_pos(i, j)] = ((((i + j) % 2) == 0) ? 1 : -1) * minor(i, j).determinant();
+	return Matrix<ItemsType>(crossItems, m, n);
 }
 
 template <typename ItemsType>
