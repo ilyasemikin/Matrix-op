@@ -117,9 +117,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="parsing_input.h" />
     <ClInclude Include="mx_base.h" />
     <ClInclude Include="ordinary_fractions.h" />
     <ClInclude Include="smath.h" />
+    <ClInclude Include="variables_input.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
