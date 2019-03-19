@@ -96,6 +96,8 @@ public:
 
 	// determinant(): нахождение определителя матрицы
 	ItemsType determinant();
+	// rank(): определение ранга матрицы
+	std::size_t rank();
 
 	Matrix<ItemsType> operator = (const Matrix<ItemsType> &mx);
 	Matrix<ItemsType> operator + () const;
@@ -586,6 +588,16 @@ ItemsType Matrix<ItemsType>::determinant() {
 	else if (n == 3)
 		return _det3();
 	return _detn();
+}
+
+template <typename ItemsType>
+std::size_t Matrix<ItemsType>::rank() {
+	Matrix<ItemsType> rowEchelon = toRowEchelonForm();
+	std::size_t res = n;
+	for (size_t i = 0; i < n; i++)
+		if (rowEchelon.isZeroLine(i))
+			res--;
+	return res;
 }
 
 template <typename ItemsType>
