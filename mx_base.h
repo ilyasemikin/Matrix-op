@@ -48,6 +48,7 @@ public:
 
 	inline bool isSquare() const { return (m == n && m != 0) ? true : false; };
 	inline bool isExist() const { return (m == 0 || n == 0 || items.empty()) ? false : true; }
+	// WARNING!!: isUpTriangular(), isLowTriangular() - требуетс€ переработка дл€ случаев, когда обрабатываетс€ не квадратна€ матрица
 	// isUpTriangular(): проверка, €вл€етс€ ли матрица верхнетреугольной
 	bool isUpTriangular() const;
 	// isUpTriangular(): проверка, €вл€етс€ ли матрица нижнетреугольной
@@ -75,6 +76,12 @@ public:
 	void swapLines(std::size_t i1, std::size_t i2);
 	void swapColumns(std::size_t j1, std::size_t j2);
 
+	void removeLine(std::size_t i);
+	void removeColumn(std::size_t j);
+
+	void removeZeroLines();
+	void removeZeroColumns();
+
 	// minor(...): возвращает минор матрицы, не измен€ет исходную матрицу
 	Matrix<ItemsType> minor(std::size_t pos) const;
 	Matrix<ItemsType> minor(std::size_t _i, std::size_t _j) const;
@@ -89,8 +96,11 @@ public:
 	// inverseThread(): возврат обратной матрицы, не измен€ет исходную матрицу. ¬ычисление с использованием многопоточности
 	Matrix<ItemsType> inverseThread();
 
-	// toRowEchelonForm(): сведение матрицы к верхне треугольному виду
+	void toRowEchelonFormH();
+	// toRowEchelonForm(): возвращеет сведенную к верхне треугольному виду матрицу 
 	Matrix<ItemsType> toRowEchelonForm();
+
+	void toIdentityH();
 	// toIdentity(): сведение матрицы к единичной
 	Matrix<ItemsType> toIdentity();
 
@@ -124,6 +134,8 @@ public:
 
 	template <typename T>
 	friend bool operator == (const Matrix<T> &mx1, const Matrix<T> &mx2);
+	template <typename T>
+	friend bool operator != (const Matrix<T> &mx1, const Matrix<T> &mx2);
 
 	template <typename T>
 	friend std::ostream & operator << (std::ostream &stream, const Matrix<ItemsType> &mx);
@@ -294,7 +306,7 @@ template <typename ItemsType>
 bool Matrix<ItemsType>::isUpTriangular() const {
 	for (std::size_t i = 0; i < m; i++)
 		for (std::size_t j = i + 1; j < n; j++)
-			if (!(SMath::abs(items[ij_to_pos(i, j)]) <= epsilon))
+			if (SMath::abs(items[ij_to_pos(i, j)]) > epsilon)
 				return false;
 	return true;
 }
@@ -303,9 +315,9 @@ template <typename ItemsType>
 bool Matrix<ItemsType>::isLowTriangular() const {
 	for (std::size_t i = m - 1; i > 0; i--)
 		for (std::size_t j = 0; j < m - i - 1; j++)
-			if (!(items[ij_to_pos(i, j)] <= 0))
+			if (SMath::abs(items[ij_to_pos(i, j)]) > epsilon)
 				return false;
-	return true;
+	return false;
 }
 
 template <typename ItemsType>
@@ -415,6 +427,53 @@ void Matrix<ItemsType>::swapColumns(std::size_t j1, std::size_t j2) {
 }
 
 template <typename ItemsType>
+void Matrix<ItemsType>::removeLine(std::size_t i) {
+	if (!isExist())
+		throw;
+	if (m == 1) {
+		items.clear();
+		m = n = 0;
+		return;
+	}
+	items.erase(items.begin() + ij_to_pos(i, 0), items.begin() + ij_to_pos(i, 0) + n);
+	m--;
+}
+
+template <typename ItemsType>
+void Matrix<ItemsType>::removeColumn(std::size_t j) {
+	if (!isExist())
+		throw;
+	if (n == 1) {
+		items.clear();
+		m = n = 0;
+		return;
+	}
+	std::size_t k = m;
+	do {
+		items.erase(items.begin() + ij_to_pos(--k, j));
+	} while (k != 0);
+	n--;
+}
+
+template <typename ItemsType>
+void Matrix<ItemsType>::removeZeroLines() {
+	std::size_t i = m;
+	do {
+		if (isZeroLine(--i))
+			removeLine(i);
+	} while (i != 0);
+}
+
+template <typename ItemsType>
+void Matrix<ItemsType>::removeZeroColumns() {
+	std::size_t j = n;
+	do {
+		if (isZeroColumn(--j))
+			removeColumn(j);
+	} while (j != 0);
+}
+
+template <typename ItemsType>
 Matrix<ItemsType> Matrix<ItemsType>::minor(std::size_t pos) const {
 	std::pair<std::size_t, std::size_t> ij = pos_to_ij(pos);
 	return minor(ij.first, ij.second);
@@ -499,81 +558,97 @@ Matrix<ItemsType> Matrix<ItemsType>::inverseThread() {
 }
 
 template <typename ItemsType>
-Matrix<ItemsType> Matrix<ItemsType>::toRowEchelonForm() {
+void Matrix<ItemsType>::toRowEchelonFormH() {
 	if (!isExist())
 		throw(std::exception("Matrix isn't exist"));
-	if (m > n)
-		throw;
+	// “ребуетс€ проверка следующего услови€ дл€ неквадратных матриц:
 	if (isLowTriangular())
-		return *this;
-	Matrix<ItemsType> res = *this;
-	for (std::size_t j = 0; j < res.m; j++)
-		for (std::size_t i = 0; i < res.m; i++) {
+		return;
+
+	ItemsType coefBase, coef;
+
+	for (std::size_t j = 0; j < n; j++)
+		for (std::size_t i = j; i < m; i++) {
 			if (i == j) {
-				if (SMath::abs(res.items[ij_to_pos(i, j)]) <= res.epsilon) {
-					std::vector<ItemsType> column = res.getColumnV(j);
+				if (SMath::abs(items[ij_to_pos(i, j)]) <= epsilon) {
+					std::vector<ItemsType> column = getColumnV(j);
 					column.erase(column.begin(), column.begin() + j);
 					std::size_t iMaxItem = SMath::max(column) + j;
-					if (SMath::abs(items[ij_to_pos(iMaxItem, j)]) < res.epsilon)
+					if (SMath::abs(items[ij_to_pos(iMaxItem, j)]) <= epsilon)
 						break;
-					swapLines(iMaxItem, i);
+					swapLines(i, iMaxItem);
 				}
-				continue;
+				coefBase = items[ij_to_pos(i, j)];
 			}
-
-			if (i > j) {
-				ItemsType coef0, coef1;
-				coef0 = res.items[ij_to_pos(j, j)];
-				coef1 = res.items[ij_to_pos(i, j)];
-				for (std::size_t k = j; k < res.n; k++)
-					res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
+			else {
+				if (SMath::abs(items[ij_to_pos(i, j)]) > epsilon) {
+					coef = items[ij_to_pos(i, j)];
+					for (std::size_t k = j; k < n; k++)
+						items[ij_to_pos(i, k)] = coefBase * items[ij_to_pos(i, k)] - coef * items[ij_to_pos(j, k)];
+				}
 			}
 		}
+
+	removeZeroLines();
+}
+
+template <typename ItemsType>
+Matrix<ItemsType> Matrix<ItemsType>::toRowEchelonForm() {
+	Matrix<ItemsType> res = *this;
+	res.toRowEchelonFormH();
 	return res;
 }
 
 template <typename ItemsType>
-Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
+void Matrix<ItemsType>::toIdentityH() {
 	if (!isExist())
 		throw(std::exception("Matrix isn't exist"));
-	if (m > n)
-		throw;
-	Matrix<ItemsType> res = *this;
-	for (std::size_t j = 0; j < res.m; j++)
-		for (std::size_t i = j; i < res.m; i++) {
-			if (i == j) {				// ѕриводим элементы i, i к единице
-				if (SMath::abs(res.items[ij_to_pos(i, j)]) <= res.epsilon) {
-					std::vector<ItemsType> curColumn = res.getColumnV(j);
+
+	ItemsType coef;
+
+	for (std::size_t j = 0; j < n; j++)
+		for (std::size_t i = j; i < m; i++) {
+			if (i == j) {	// ѕриводим элементы i, i к единице
+				if (SMath::abs(items[ij_to_pos(i, j)]) <= epsilon) {
+					std::vector<ItemsType> curColumn = getColumnV(j);
 					curColumn.erase(curColumn.begin(), curColumn.begin() + i);
 					std::size_t iMaxItem = SMath::max(curColumn) + i;
-					if (SMath::abs(res.items[iMaxItem]) < res.epsilon)
+					if (SMath::abs(items[ij_to_pos(iMaxItem, j)]) <= epsilon)
 						break;
-					res.swapLines(i, iMaxItem);
+					swapLines(i, iMaxItem);
 				}
 
-				if (SMath::abs(res.items[ij_to_pos(i, j)] - 1) > res.epsilon) {
-					ItemsType coef = res.items[ij_to_pos(i, j)];
-					for (std::size_t k = i; k < res.n; k++)
-						res.items[ij_to_pos(i, k)] /= coef;
+				if (SMath::abs(items[ij_to_pos(i, j)] - 1) > epsilon) {
+					coef = items[ij_to_pos(i, j)];
+					for (std::size_t k = i; k < n; k++)
+						items[ij_to_pos(i, k)] /= coef;
 				}
-				continue;
 			}
-
-			// ѕриводим матрицу к верхне треугольному виду
-			ItemsType coef0, coef1;
-			coef0 = res.items[ij_to_pos(j, j)];
-			coef1 = res.items[ij_to_pos(i, j)];
-			for (std::size_t k = j; k < res.n; k++)
-				res.items[ij_to_pos(i, k)] = coef0 * res.items[ij_to_pos(i, k)] - coef1 * res.items[ij_to_pos(j, k)];
+			else if (SMath::abs(items[ij_to_pos(i, j)]) > epsilon) {	// ѕриводим матрицу к верхне треугольному виду
+				coef = items[ij_to_pos(i, j)];
+				for (std::size_t k = j; k < n; k++)
+					items[ij_to_pos(i, k)] -= coef * items[ij_to_pos(j, k)];
+			}
 		}
+
+	removeZeroLines();
 
 	// ѕриводим матрицу к единичной
-	for (std::size_t j = res.m - 1; j > 0; j--)
-		for (std::size_t i = 0; i != j; i++) {
-			ItemsType coef = res.items[ij_to_pos(i, j)];
-			for (std::size_t k = j; k < res.n; k++)
-				res.items[ij_to_pos(i, k)] = res.items[ij_to_pos(i, k)] - coef * res.items[ij_to_pos(j, k)];
-		}
+	for (std::size_t j = m - 1; j > 0; j--) {
+		std::size_t i = j;
+		do {
+			--i;
+			coef = items[ij_to_pos(i, j)];
+			for (std::size_t k = j; k < n; k++)
+				items[ij_to_pos(i, k)] -= coef * items[ij_to_pos(j, k)];
+		} while (i != 0);
+	}
+}
+
+template <typename ItemsType>
+Matrix<ItemsType> Matrix<ItemsType>::toIdentity() {
+	Matrix<ItemsType> res = *this;
+	res.toIdentityH();
 	return res;
 }
 
@@ -592,9 +667,9 @@ ItemsType Matrix<ItemsType>::determinant() {
 
 template <typename ItemsType>
 std::size_t Matrix<ItemsType>::rank() {
-	Matrix<ItemsType> rowEchelon = toRowEchelonForm();
-	std::size_t res = n;
-	for (size_t i = 0; i < n; i++)
+	Matrix<ItemsType> rowEchelon = toRowEchelonFormH();
+	std::size_t res = m;
+	for (size_t i = 0; i < m; i++)
 		if (rowEchelon.isZeroLine(i))
 			res--;
 	return res;
@@ -702,6 +777,11 @@ bool operator == (const Matrix<ItemsType> &mx1, const Matrix<ItemsType> &mx2) {
 		if (mx1.items[i] != mx2.items[i])
 			return false;
 	return true;
+}
+
+template <typename T>
+bool operator != (const Matrix<T> &mx1, const Matrix<T> &mx2) {
+	return !(mx1 == mx2);
 }
 
 template<typename ItemsType>
